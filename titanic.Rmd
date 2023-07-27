@@ -1,0 +1,214 @@
+---
+title: "Titanic"
+author: "Juan Manuel Cabrera"
+date: "2023-07-26"
+output:
+  html_document:
+    df_print: paged
+    css: "style.css"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F,
+                      warning = F,
+                      message = F)
+```
+
+
+```{r}
+#Librerias
+library(titanic)
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+```
+
+### **Análisis del dataframe Titanic**
+
+En primer lugar se importa los datos y se muestran las 6 primeras filas.
+```{r}
+#Análisis de los datos
+titanic <- titanic_train
+head(titanic)
+
+```
+
+
+A continuación se muestran la estructura del dataframe
+```{r}
+str(titanic)
+```
+
+### **Escala de las variables**
+
+Analizando el dataframe se observan las escalas y formato de las variables:
+
+Variable        |   Escala        |    Formato
+----------------|-----------------|---------------
+PassengerId     |   Discreta      |    `r class(titanic$PassengerId)`
+Survived        |   Nominal       |    `r class(titanic$Survived)`
+Pclass          |   Ordinal       |    `r class(titanic$Pclass)`
+Name            |   ---           |    `r class(titanic$Name)`
+Sex             |   Nominal       |    `r class(titanic$Sex)`
+Age             |   Discreta      |    `r class(titanic$Age)`
+SibSp           |   Discreta      |    `r class(titanic$SibSp)`
+Parch           |   Discreta      |    `r class(titanic$Parch)`
+Ticket          |   Nominal       |    `r class(titanic$Ticket)`
+Fare            |   Continua      |    `r class(titanic$Fare)`
+Cabin           |   Nominal       |    `r class(titanic$Cabin)`
+Embarked        |   Nominal       |    `r class(titanic$Embarked)`
+
+En el dataframe del Titanic se disponen de varias variables categóricas, estas son:
+
+###
+* Survived: indica si el pasajero ha sobrevivido:
+  + 1 Ha sobrevivido
+  + 0 No ha sobrevivido
+* Pclass: indica el nivel de clase:
+  + 1 primera clase
+  + 2 segunda clase
+  + 3 tercera clase
+* Sex: indica el género:
+  + male (hombre)
+  + female (mujer).
+* SibSP: señala número de hermanos.
+* Parch: indica el número de padres cuyos hijos están a bordo.
+* Embarked: representa la puerta de embarcación
+
+Todas estas variables categóricas vienen expresadas con diferentes formatos.
+
+Siendo necesario factorizarlas con la finalidad de poder trabajar con ellas.
+
+```{r}
+titanic$Survived <- as.factor(titanic$Survived)
+titanic$Pclass <- as.factor(titanic$Pclass)
+titanic$Sex <- as.factor(titanic$Sex)
+titanic$SibSp <- as.factor(titanic$SibSp)
+titanic$Parch <- as.factor(titanic$Parch)
+titanic$Embarked <- as.factor(titanic$Embarked)
+```
+
+Factorizada las variables categóricas volvemos a comprobar el formato:
+
+Variable         |         Formato
+-----------------|-------------------
+Survived         |      `r class(titanic$Survived)`
+Pclass           |      `r class(titanic$Pclass)`
+Sex              |      `r class(titanic$Sex)`
+SibSp            |      `r class(titanic$SibSp)`
+Parch            |      `r class(titanic$Parch)`
+Embarked         |      `r class(titanic$Embarked)`
+
+
+Para el resto de variables no sería necesario transformarlas
+
+## **¿Cuándas personas sobrevivieron?**
+
+```{r}
+num_survived <- titanic %>% 
+  filter(Survived== 1) %>% 
+  nrow()
+
+num_not_survived <- titanic %>% 
+  filter(Survived != 1) %>% 
+  nrow()
+
+porcen_survived <- round(num_survived/nrow(titanic)*100, 2)
+```
+
+En la tragedia del titanic sobrevivieron un total de **`r num_survived` personas**
+y perecieron un total de **`r num_not_survived` personas**. Esto supone que sobrevivió
+el **`r porcen_survived`%** del pasaje.
+
+
+## **Comparación entre pasaje que sobrevivió y edad**
+
+```{r}
+titanic %>% 
+  ggplot(aes(x = Survived, y = Age, fill = Survived), na.rm=T) +
+  geom_boxplot() +
+  labs(title = "Survived vs Age")
+```
+
+En este gráfico se ha representado mediante cajas las variables Survived y Age.
+
+De dicho gráfico se pueden extraer las siguientes concluciones
+
+###
+* La edad media de personas que sobrevivieron y que no es entorno a los 28 años.
+* En general sobrevivieron personas más jóvenes.
+
+
+## **Comparación entre pasaje que sobrevivió y genero**
+
+```{r}
+titanic %>% 
+  ggplot(aes(x=Survived, color=Sex, fill=Sex))+
+  geom_histogram(stat="count") +
+  labs(title = "Survived vs Age", y = "Nº pasaje") +
+  stat_count(binwidth=1, geom="text", color="black", aes(label=..count..), vjust=3)
+
+#Se calcula el nº total de hombrse y mujeres
+num_sex <- table(titanic$Sex)
+
+num_male_survived <- titanic %>% 
+  select(Survived, Sex) %>% 
+  filter(Survived == 1 & Sex == 'male')
+
+num_female_survived <- titanic %>% 
+  select(Survived, Sex) %>% 
+  filter(Survived == 1 & Sex == 'female')
+```
+
+En el gráfico anterior se ha mostrado mediante un gráfico de barras el número de
+pasaje que sobrevivió y que falleció en función del sexo.
+
+El número de pasaje que sobrevivó fue de `r nrow(num_female_survived)` mujeres
+y `r nrow(num_male_survived)` hombres.
+
+Comparandola en función del número total de hombres y mujeres respectivamente,
+sobrevivió el `r round(nrow(num_male_survived)/num_sex[2]*100, 2)`% de los hombres
+y el `r round(nrow(num_female_survived)/num_sex[1]*100, 2)`% de las mujeres.
+
+
+## **Comparación entre pasaje que sobrevivió y clase social**
+
+```{r}
+titanic %>% 
+  ggplot(aes(x=Pclass, color=Survived, fill=Survived))+
+  geom_histogram( stat="count") +
+  labs(title = "Survived vs Pclass", y = "Nº pasaje") +
+  stat_count(binwidth=1, geom="text", color="black", aes(label=..count..), vjust=3)
+
+#Se obtienen el número de pasaje por clases
+num_pasaje <- table(titanic$Pclass)
+
+num_pasaje_1 <- titanic %>% 
+  select(Survived, Pclass) %>% 
+  filter(Survived == 1 & Pclass == 1)
+
+num_pasaje_2 <- titanic %>% 
+  select(Survived, Pclass) %>% 
+  filter(Survived == 1 & Pclass == 2)
+
+num_pasaje_3 <- titanic %>% 
+  select(Survived, Pclass) %>% 
+  filter(Survived == 1 & Pclass == 3)
+```
+
+En este caso se ha mostrado el nº de pasaje que sobrevivió o no en función de la
+clase social.
+
+Se observa que el número de personas que sobrevíó es similar a las tres clases,
+si bien habría que tener en cuenta el número de pasaje por clases. De tal manera
+se obtienen la siguiente conclusión:
+
+###
+* Sobrevivió un total de `r nrow(num_pasaje_1)` personas de primera clase de `r num_pasaje[1]` personas,
+el `r round(136/num_pasaje[1]*100, 2)`%.
+* Sobrevivió un total de `r nrow(num_pasaje_2)` personas de segunda clase de `r num_pasaje[2]` personas,
+el `r round(136/num_pasaje[2]*100, 2)`%.
+* Sobrevivió un total de `r nrow(num_pasaje_3)` personas de un total de `r num_pasaje[3]` personas,
+el `r round(136/num_pasaje[3]*100, 2)`%.
+
+
